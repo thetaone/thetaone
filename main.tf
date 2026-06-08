@@ -16,22 +16,11 @@ provider "aws" {
 
 # Website infrastructure (CloudFront + S3)
 module "website" {
-  source = "./website/terraform"
+  source = "./modules/website"
 
-  bucket_name            = var.website_bucket_name
-  environment            = var.environment
-  cloudfront_price_class = var.cloudfront_price_class
-  domain_aliases         = var.website_domain_aliases
-  use_custom_ssl         = var.website_use_custom_ssl
-  acm_certificate_arn    = var.website_acm_certificate_arn
-  aws_region             = var.aws_region
-}
-
-# Parmail infrastructure (SES email service)
-module "parmail" {
-  source = "./parmail/terraform"
-
-  # Add parmail-specific variables here as needed
+  bucket_name  = var.website_bucket_name
+  environment  = var.environment
+  website_path = "${path.root}/website"
 }
 
 # Add more infrastructure modules as needed:

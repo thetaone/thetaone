@@ -1,0 +1,13 @@
+# Theta One Infrastructure Configuration
+
+# General settings
+aws_region  = "us-west-2"
+environment = "production"
+
+# Website configuration
+website_bucket_name = "thetaone-website"
+
+# Optional: Custom domain for website
+# website_domain_aliases      = ["thetaone.io", "www.thetaone.io"]
+# website_use_custom_ssl      = true
+# website_acm_certificate_arn = "arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERT_ID"

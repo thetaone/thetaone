@@ -1,3 +1,13 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+      configuration_aliases = [aws.us_east_1]
+    }
+  }
+}
+
 # S3 bucket for website content
 resource "aws_s3_bucket" "website" {
   bucket = var.bucket_name
@@ -107,12 +117,72 @@ resource "aws_cloudfront_distribution" "website" {
     }
   }
 
+  aliases = [var.domain_name, "www.${var.domain_name}"]
+
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = aws_acm_certificate.website.arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = {
     Name        = "Theta One Website Distribution"
     Environment = var.environment
+  }
+
+  depends_on = [aws_acm_certificate_validation.website]
+}
+
+# ACM certificate (must be in us-east-1 for CloudFront)
+resource "aws_acm_certificate" "website" {
+  provider          = aws.us_east_1
+  domain_name       = var.domain_name
+  validation_method = "DNS"
+  subject_alternative_names = ["www.${var.domain_name}"]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "Theta One Website Certificate"
+    Environment = var.environment
+  }
+}
+
+# Use AWS ACM validation helper which handles the for_each issue
+resource "aws_acm_certificate_validation" "website" {
+  provider        = aws.us_east_1
+  certificate_arn = aws_acm_certificate.website.arn
+
+  # Validation will be manual via Route53 - we'll create records after certificate exists
+  timeouts {
+    create = "45m"
+  }
+}
+
+# Route53 A record for apex domain
+resource "aws_route53_record" "website_apex" {
+  zone_id = var.zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.website.domain_name
+    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# Route53 A record for www subdomain
+resource "aws_route53_record" "website_www" {
+  zone_id = var.zone_id
+  name    = "www.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.website.domain_name
+    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
+    evaluate_target_health = false
   }
 }
